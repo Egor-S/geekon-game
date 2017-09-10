@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Главная</title>
+</head>
+<body>
+<p>Hello{% if session['user_id'] %} #{{ session['user_id'] }}{% endif %}!</p>
+<a href="{{ url_for('logout') }}">Выход</a>
+</body>
+</html>

@@ -4,7 +4,7 @@ import random
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from game.database import Base
-from game.config import *
+from game.parameters import *
 from auth.model import get_user_model
 
 User = get_user_model(Base)
@@ -52,7 +52,6 @@ class Player(Base):
 
     game_id = Column(Integer, ForeignKey('games.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
-    user = relationship("User", back_populates="player", uselist=False)
     company = relationship("Company", uselist=False, backref="owner")
     investments = relationship("Investment", backref="investor")
 
@@ -138,11 +137,11 @@ class Investment(Base):
     part = Column(Integer)  # percents (<100)
 
     game_id = Column(Integer, ForeignKey('games.id'))
-    investor_id = Column(Integer, ForeignKey('users.id'))
+    investor_id = Column(Integer, ForeignKey('players.id'))
     company_id = Column(Integer, ForeignKey('companies.id'))
 
     def __init__(self, amount, part):
         self.amount = amount
         self.part = part
 
-User.players = relationship("Player", back_populates="user")
+User.players = relationship("Player", backref="user")
