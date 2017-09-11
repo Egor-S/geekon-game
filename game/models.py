@@ -144,4 +144,5 @@ class Investment(Base):
         self.amount = amount
         self.part = part
 
+
 User.players = relationship("Player", backref="user")
