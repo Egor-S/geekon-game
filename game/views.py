@@ -3,8 +3,8 @@ import random
 from flask import render_template, session, redirect, url_for, request, jsonify
 from sqlalchemy import func
 from game import app, db_session as db
-from game.forms import LoginForm, RegistrationForm, GameForm, InvestForm
-from game.models import User, Player, Game, Company
+from game.forms import LoginForm, RegistrationForm, GameForm, TransactionForm
+from game.models import User, Player, Game, Company, Transaction
 from game.decorators import login_required
 from game.parameters import *
 
@@ -21,13 +21,6 @@ def login_page():
     return render_template('login.html')
 
 
-@app.route('/registration')
-def registration_page():
-    if session.get('user_id'):
-        return redirect(url_for('index'))
-    return render_template('registration.html')
-
-
 @app.route('/auth/login', methods=["POST"])
 def login():
     form = LoginForm(request.form)
@@ -42,16 +35,23 @@ def login():
     return redirect(url_for('login_page'))
 
 
-@app.route('/auth/registration', methods=["POST"])
-def registration():
-    form = RegistrationForm(request.form)
-    if form.validate():
-        u = User.register(form)
-        db.add(u)
-        db.commit()
-        session['user_id'] = u.id
-        return redirect(url_for('index'))
-    return redirect(url_for('registration_page'))
+# @app.route('/registration')
+# def registration_page():
+#     if session.get('user_id'):
+#         return redirect(url_for('index'))
+#     return render_template('registration.html')
+
+
+# @app.route('/auth/registration', methods=["POST"])
+# def registration():
+#     form = RegistrationForm(request.form)
+#     if form.validate():
+#         u = User.register(form)
+#         db.add(u)
+#         db.commit()
+#         session['user_id'] = u.id
+#         return redirect(url_for('index'))
+#     return redirect(url_for('registration_page'))
 
 
 @app.route('/logout')
@@ -79,18 +79,20 @@ def join_game():
 @app.route('/games/<int:gid>')
 @login_required
 def game_view(gid):
+    # TODO
     if session['user_id'] > 1 and not Player.query.filter_by(game_id=gid, user_id=session['user_id']).first():
         return redirect(url_for('index'))
     g = Game.query.get(gid)
     if not g:
         return redirect(url_for('index'))
-    players = [{'login': p.user.login, 'money': p.money} for p in g.players]
+    players = [{'login': p.name, 'money': p.money} for p in g.players]
     return jsonify(players)
 
 
 @app.route('/games/<int:gid>/state')
 @login_required
 def game_state(gid):
+    # TODO
     if session['user_id'] > 1 and not Player.query.filter_by(game_id=gid, user_id=session['user_id']).first():
         return redirect(url_for('index'))
     g = Game.query.get(gid)
@@ -106,15 +108,15 @@ def game_state(gid):
         r['programmers'] = []
         for p in g.players:
             if p.role == ROLE_STARTUP:
-                r['companies'].append({'name': p.user.login, 'money': p.company.money, 'active': p.active})
+                r['companies'].append({'name': p.name, 'money': p.company.money, 'active': p.active, 'id': p.company.id})
             elif p.role == ROLE_SEO:
-                r['seo'].append({'name': p.user.login, 'money': p.money, 'active': p.active,
-                                 'experience': p.experience})
+                r['seo'].append({'name': p.name, 'money': p.money, 'active': p.active,
+                                 'experience': p.experience, 'id': p.id})
             elif p.role == ROLE_PROGRAMMER:
-                r['programmers'].append({'name': p.user.login, 'money': p.money, 'active': p.active,
-                                         'experience': p.experience})
+                r['programmers'].append({'name': p.name, 'money': p.money, 'active': p.active,
+                                         'experience': p.experience, 'id': p.id})
             elif p.role == ROLE_INVESTOR:
-                r['investors'].append({'name': p.user.login, 'money': p.money, 'active': p.active})
+                r['investors'].append({'name': p.name, 'money': p.money, 'active': p.active, 'id': p.id})
         r['investments'] = []  # TODO
 
     return jsonify(r)
@@ -187,11 +189,14 @@ def study_game(gid):
 @login_required
 def hire_game(gid):
     c = Company.query.filter(Company.game_id == gid, Company.owner.user_id == session['user_id']).first()
-    if c and c.game.state == 1:
-        employer = Player.query.filter_by(token=request.args.get('code', None), game_id=gid).first()
-        if employer and c.hire(employer):
+    form = TransactionForm(request.args)
+    if c and c.game.state == 1 and form.validate():
+        employer = Player.query.filter_by(game_id=gid, id=form.receiver.data).first()
+        if form.amount.data < 0 or form.part.data < 0:
+            return 'Error occurred', 400
+        if employer and employer.hire(c, form.amount.data, form.part.data):
             db.commit()
-            return 'Hired'
+            return 'Hire request created'
     return 'Error occurred', 400
 
 
@@ -209,14 +214,16 @@ def outsource_game(gid):
 @app.route('/games/<int:gid>/invest')
 @login_required
 def invest_game(gid):
-    form = InvestForm(request.args)
+    form = TransactionForm(request.args)
     if form.validate():
-        c = Company.query.filter(Company.owner.token == form.code.data, Company.game_id == gid).first()
+        c = Company.query.filter(Company.game_id == gid, Company.owner.id == form.receiver.data).first()
         i = Player.query.filter_by(user_id=session['user_id'], game_id=gid)
         if c and i:
-            if c.invest(i, INVEST_DEFAULT_MONEY, INVEST_DEFAULT_PART):
+            if form.amount.data < 0 or form.part.data < 0:
+                return 'Error occurred', 400
+            if c.invest(i, form.amount.data, form.part.data):
                 db.commit()
-                return 'Invested'
+                return 'Invest request created'
     return 'Error occurred', 400
 
 
@@ -231,3 +238,25 @@ def round_game(gid):
     g.new_round()
     db.commit()
     return 'New round'
+
+
+@app.route('/games/<int:gid>/transactions/<int:tid>/accept')
+@login_required
+def accept_game(gid, tid):
+    t = Transaction.query.filter(Transaction.id == tid, Transaction.game_id == gid,
+                                 Transaction.receiver.user_id == session['user_id']).first()
+    if t and t.state == 0:
+        t.accept()
+        return 'Accepted'
+    return 'Error occurred', 400
+
+
+@app.route('/games/<int:gid>/transactions/<int:tid>/reject')
+@login_required
+def reject_game(gid, tid):
+    t = Transaction.query.filter(Transaction.id == tid, Transaction.game_id == gid,
+                                 Transaction.receiver.user_id == session['user_id']).first()
+    if t and t.state == 0:
+        t.reject()
+        return 'Accepted'
+    return 'Error occurred', 400

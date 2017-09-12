@@ -20,7 +20,7 @@ class GameForm(Form):
     rounds = IntegerField('rounds', validators=[Optional()], default=10)
 
 
-class InvestForm(Form):
-    code = StringField('code', validators=[InputRequired(), Length(min=4, max=10)])
-    part = IntegerField('part', validators=[Optional()])
-    amount = IntegerField('amount', validators=[Optional()])
+class TransactionForm(Form):
+    part = IntegerField('part', validators=[InputRequired()])
+    amount = IntegerField('amount', validators=[InputRequired()])
+    receiver = IntegerField('target', validators=[InputRequired()])

@@ -1,12 +1,12 @@
 # -*- coding: utf8 -*-
-import string
-import random
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from game.database import Base
 from game.parameters import *
 from auth.model import get_user_model
+from faker import Faker
 
+fake_generator = Faker('en_US')
 User = get_user_model(Base)
 
 
@@ -20,7 +20,8 @@ class Game(Base):
 
     players = relationship("Player", backref="game")
     companies = relationship("Company", backref="game")
-    investments = relationship("Investment", backref="game")
+    transactions = relationship("Transaction", backref="game")
+    parameters = relationship("Parameter", backref="game")
 
     def __init__(self, code, rounds=None):
         self.join_code = code
@@ -39,25 +40,47 @@ class Game(Base):
             for c in self.companies:
                 c.owner.active = False
                 c.owner.money = c.money
+        for t in self.transactions:
+            if t.state == 0:
+                t.state = 3
+            elif t.state == 1:
+                t.state = 2
 
 
 class Player(Base):
     __tablename__ = 'players'
     id = Column(Integer, primary_key=True)
+    name = Column(String(80), default="Bob")
     money = Column(Integer, default=0)
     experience = Column(Integer, default=10)
     active = Column(Boolean, default=False)
     role = Column(Integer)  # Start-up, Programmer, SEO, Investor
-    token = Column(String(10))
 
     game_id = Column(Integer, ForeignKey('games.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
     company = relationship("Company", uselist=False, backref="owner")
-    investments = relationship("Investment", backref="investor")
+    transactions_in = relationship("Transaction", backref="receiver", foreign_keys='Transaction.receiver_id')
+    transaction_out = relationship("Transaction", backref="sender", foreign_keys='Transaction.sender_id')
+
+    def __init__(self):
+        self.name = fake_generator.name()
+
+    def hire(self, company, amount, part):
+        if (self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO) and self.active:
+            if sum([t.amount for t in company.owner.transactions_out if t.state == 0]) + amount >= company.money:
+                if sum([t.part for t in self.transactions_in if t.state <= 1]) + part <= self.experience:
+                    if self.role == ROLE_PROGRAMMER:
+                        t = Transaction(amount, part, TRANSACTION_HIRE_PROGRAMMER)
+                    else:
+                        t = Transaction(amount, part, TRANSACTION_HIRE_SEO)
+                    self.game.transactions.append(t)
+                    t.sender = company.owner
+                    t.receiver = self
+                    return True
+        return False
 
     def new_round(self):
         self.active = True
-        self.token = "".join([random.choice(string.digits + string.ascii_lowercase) for _ in xrange(6)])
 
     def study(self):
         if self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO:
@@ -75,23 +98,10 @@ class Company(Base):
     money = Column(Integer, default=0)
     tech = Column(Integer, default=0)
     fame = Column(Integer, default=0)
+    title = Column(String(100), default="Simple company")
 
     game_id = Column(Integer, ForeignKey('games.id'))
     owner_id = Column(Integer, ForeignKey('players.id'))
-    investments = relationship("Investment", backref="company")
-    
-    def hire(self, employer):
-        if employer.role == ROLE_PROGRAMMER or employer.role == ROLE_SEO:
-            if employer.active and self.money >= employer.experience * JOB_MULTIPLIER and self.owner.active:
-                employer.active = False
-                self.money -= int(employer.experience * JOB_MULTIPLIER)
-                employer.money += int(employer.experience * JOB_MULTIPLIER)
-                if employer.role == ROLE_PROGRAMMER:
-                    self.tech += employer.experience
-                else:
-                    self.fame += employer.experience
-                return True
-        return False
 
     def outsource(self, role):
         if self.owner.active:
@@ -107,42 +117,74 @@ class Company(Base):
 
     def invest(self, investor, amount, part):
         if investor.role == ROLE_INVESTOR:
-            if investor.active and investor.money >= amount and self.owner.active:
-                investor.active = False
-                investor.money -= amount
-                self.money += amount
-                i = Investment(amount, part)
-                i.company = self
-                investor.investments.append(i)
-                return True
+            if investor.money >= amount + sum([t.amount for t in investor.transactions_out if t.state == 0]):
+                if sum([t.part for t in self.owner.transactions_in if t.state <= 2]) + part <= 100:
+                    t = Transaction(amount, part, TRANSACTION_INVEST)
+                    self.game.transactions.append(t)
+                    t.receiver = t.self.owner
+                    t.sender = investor
+                    return True
         return False
 
     def new_round(self):
-        self.owner.active = True
         gain = int(FAME_MULTIPLIER * self.fame - PENALTY_MULTIPLIER * max(0, self.fame - self.tech))
         total_payments = 0
-        for i in self.investments:
-            payment = int(i.part / 100.0 * gain)
-            i.investor.money += payment
-            total_payments += payment
+        for t in self.owner.transactions_in:
+            if t.type == TRANSACTION_INVEST and (t.state == 1 or t.state == 2):
+                payment = int(t.part / 100.0 * gain)
+                t.sender.money += payment
+                total_payments += payment
         gain -= total_payments
         gain -= int(TAX_MULTIPLIER * gain)
         self.money += gain
 
 
-class Investment(Base):
-    __tablename__ = 'investments'
+class Transaction(Base):
+    __tablename__ = 'transactions'
     id = Column(Integer, primary_key=True)
-    amount = Column(Integer)  # money
-    part = Column(Integer)  # percents (<100)
+    state = Column(Integer, default=0)  # waiting, accepted, accepted in previous round, rejected
+    type = Column(Integer, default=0)
+    amount = Column(Integer, default=0)
+    part = Column(Integer, default=0)  # part of company or experience
 
     game_id = Column(Integer, ForeignKey('games.id'))
-    investor_id = Column(Integer, ForeignKey('players.id'))
-    company_id = Column(Integer, ForeignKey('companies.id'))
+    sender_id = Column(Integer, ForeignKey('players.id'))
+    receiver_id = Column(Integer, ForeignKey('players.id'))
 
-    def __init__(self, amount, part):
+    def __init__(self, amount, part, t_type):
         self.amount = amount
         self.part = part
+        self.type = t_type
+
+    def reject(self):
+        self.state = 3
+
+    def accept(self):
+        if self.type == TRANSACTION_INVEST:
+            self.receiver.company.money += self.amount
+            self.sender.money -= self.amount
+        elif self.type == TRANSACTION_HIRE_PROGRAMMER:
+            self.receiver.money += self.amount
+            self.sender.company.money -= self.amount
+            self.sender.company.tech += self.part
+        elif self.type == TRANSACTION_HIRE_SEO:
+            self.receiver.money += self.amount
+            self.sender.company.money -= self.amount
+            self.sender.company.fame += self.part
+        self.state = 1
+
+
+class Parameter(Base):  # TODO
+    __tablename__ = 'parameters'
+    id = Column(Integer, primary_key=True)
+    key = Column(Integer)
+    value = Column(Float, default=0.0)
+
+    game_id = Column(Integer, ForeignKey('games.id'))
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
 
 
 User.players = relationship("Player", backref="user")
