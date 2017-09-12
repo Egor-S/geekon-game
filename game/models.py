@@ -60,14 +60,14 @@ class Player(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     company = relationship("Company", uselist=False, backref="owner")
     transactions_in = relationship("Transaction", backref="receiver", foreign_keys='Transaction.receiver_id')
-    transaction_out = relationship("Transaction", backref="sender", foreign_keys='Transaction.sender_id')
+    transactions_out = relationship("Transaction", backref="sender", foreign_keys='Transaction.sender_id')
 
     def __init__(self):
         self.name = fake_generator.name()
 
     def hire(self, company, amount, part):
         if (self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO) and self.active:
-            if sum([t.amount for t in company.owner.transactions_out if t.state == 0]) + amount >= company.money:
+            if sum([t.amount for t in company.owner.transactions_out if t.state == 0]) + amount <= company.money:
                 if sum([t.part for t in self.transactions_in if t.state <= 1]) + part <= self.experience:
                     if self.role == ROLE_PROGRAMMER:
                         t = Transaction(amount, part, TRANSACTION_HIRE_PROGRAMMER)
@@ -121,7 +121,7 @@ class Company(Base):
                 if sum([t.part for t in self.owner.transactions_in if t.state <= 2]) + part <= 100:
                     t = Transaction(amount, part, TRANSACTION_INVEST)
                     self.game.transactions.append(t)
-                    t.receiver = t.self.owner
+                    t.receiver = self.owner
                     t.sender = investor
                     return True
         return False

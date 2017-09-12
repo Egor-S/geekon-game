@@ -92,8 +92,9 @@ def game_view(gid):
 @app.route('/games/<int:gid>/state')
 @login_required
 def game_state(gid):
-    # TODO
-    if session['user_id'] > 1 and not Player.query.filter_by(game_id=gid, user_id=session['user_id']).first():
+    # TODO refactor
+    player = Player.query.filter_by(game_id=gid, user_id=session['user_id']).first()
+    if session['user_id'] > 1 and not player:
         return redirect(url_for('index'))
     g = Game.query.get(gid)
     if not g:
@@ -117,6 +118,9 @@ def game_state(gid):
                                          'experience': p.experience, 'id': p.id})
             elif p.role == ROLE_INVESTOR:
                 r['investors'].append({'name': p.name, 'money': p.money, 'active': p.active, 'id': p.id})
+        if player:
+            r['transactions'] = [{'amount': t.amount, 'part': t.part, 'id': t.id, 'state': t.state}
+                                 for t in player.transactions_in]
         r['investments'] = []  # TODO
 
     return jsonify(r)
@@ -188,12 +192,12 @@ def study_game(gid):
 @app.route('/games/<int:gid>/hire')
 @login_required
 def hire_game(gid):
-    c = Company.query.filter(Company.game_id == gid, Company.owner.user_id == session['user_id']).first()
+    c = Company.query.join(Company.owner).filter(Company.game_id == gid, Player.user_id == session['user_id']).first()
     form = TransactionForm(request.args)
     if c and c.game.state == 1 and form.validate():
         employer = Player.query.filter_by(game_id=gid, id=form.receiver.data).first()
         if form.amount.data < 0 or form.part.data < 0:
-            return 'Error occurred', 400
+            return 'Wrong values', 400
         if employer and employer.hire(c, form.amount.data, form.part.data):
             db.commit()
             return 'Hire request created'
@@ -203,7 +207,7 @@ def hire_game(gid):
 @app.route('/games/<int:gid>/outsource')
 @login_required
 def outsource_game(gid):
-    c = Company.query.filter(Company.game_id == gid, Company.owner.user_id == session['user_id']).first()
+    c = Company.query.join(Company.owner).filter(Company.game_id == gid, Player.user_id == session['user_id']).first()
     if c and c.game.state == 1:
         if c.outsource(int(request.args.get('type', ROLE_PROGRAMMER))):
             db.commit()
@@ -216,14 +220,16 @@ def outsource_game(gid):
 def invest_game(gid):
     form = TransactionForm(request.args)
     if form.validate():
-        c = Company.query.filter(Company.game_id == gid, Company.owner.id == form.receiver.data).first()
-        i = Player.query.filter_by(user_id=session['user_id'], game_id=gid)
+        c = Company.query.filter(Company.game_id == gid, Company.owner_id == form.receiver.data).first()
+        i = Player.query.filter_by(user_id=session['user_id'], game_id=gid).first()
         if c and i:
             if form.amount.data < 0 or form.part.data < 0:
-                return 'Error occurred', 400
+                return 'Wrong values', 400
             if c.invest(i, form.amount.data, form.part.data):
                 db.commit()
                 return 'Invest request created'
+        else:
+            return 'Can\'t find user or company', 400
     return 'Error occurred', 400
 
 
@@ -243,10 +249,11 @@ def round_game(gid):
 @app.route('/games/<int:gid>/transactions/<int:tid>/accept')
 @login_required
 def accept_game(gid, tid):
-    t = Transaction.query.filter(Transaction.id == tid, Transaction.game_id == gid,
-                                 Transaction.receiver.user_id == session['user_id']).first()
+    t = Transaction.query.join(Transaction.receiver).filter(Transaction.id == tid, Transaction.game_id == gid,
+                                                            Player.user_id == session['user_id']).first()
     if t and t.state == 0:
         t.accept()
+        db.commit()
         return 'Accepted'
     return 'Error occurred', 400
 
@@ -254,9 +261,10 @@ def accept_game(gid, tid):
 @app.route('/games/<int:gid>/transactions/<int:tid>/reject')
 @login_required
 def reject_game(gid, tid):
-    t = Transaction.query.filter(Transaction.id == tid, Transaction.game_id == gid,
-                                 Transaction.receiver.user_id == session['user_id']).first()
+    t = Transaction.query.join(Transaction.receiver).filter(Transaction.id == tid, Transaction.game_id == gid,
+                                                            Player.user_id == session['user_id']).first()
     if t and t.state == 0:
         t.reject()
-        return 'Accepted'
+        db.commit()
+        return 'Rejected'
     return 'Error occurred', 400

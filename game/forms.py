@@ -23,4 +23,4 @@ class GameForm(Form):
 class TransactionForm(Form):
     part = IntegerField('part', validators=[InputRequired()])
     amount = IntegerField('amount', validators=[InputRequired()])
-    receiver = IntegerField('target', validators=[InputRequired()])
+    receiver = IntegerField('receiver', validators=[InputRequired()])
