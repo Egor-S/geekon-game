@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Start-It-Up game</title>
@@ -13,6 +13,8 @@
             margin-top: 10px;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/interactive.js') }}"></script>
 </head>
 <body>
 <div class="container">
@@ -20,43 +22,30 @@
         <div class="col-sm-12 ">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title">Программист Иванов Семен Павлович</h4>
-                    <p class="card-text">Очень загадочный персонаж, предпочитает работу на сельскохозяйственные стартапы. Обожает медные провода.
-                    </p>
-                    <div class="alert alert-success" role="alert">
-                        Вы успешно поработали на компанию "Рога и копыта"!
-                    </div>
+                    <h4 class="card-title">{{ role }} {{ name }}</h4>
+                    <p class="card-text">{{ description }}</p>
                     <table class="table table-striped">
                         <tbody>
                         <tr>
                             <th>Финансы</th>
-                            <td>300 GC</td>
-
+                            <td id="p-money">{{ money }} GC</td>
                         </tr>
                         <tr>
                             <th>Опыт</th>
-                            <td>50</td>
-
+                            <td id="p-exp">{{ experience }}</td>
                         </tr>
                         </tbody>
                     </table>
+                    <p class="card-text">Доступно опыта: <strong>{{ free_exp }}</strong></p>
                 </div>
             </div>
         </div>
-        <div class="col-sm-12 ">
+        <div class="col-sm-12">
             <div class="card">
-                <div class="card-body btn btn-primary">
-                    <h4 class="card-title">Устроиться на работу</h4>
-                    <form>
-                        <label for="skill">Опыт:</label>
-                        <input class="form-control" type="number" name="skill" id="skill" />
-                        <label for="salary">Зарплата:</label>
-                        <input class="form-control" type="number" name="salary" id="salary" />
-                        <label for="salary">Код подтверждения компании:</label>
-                        <input class="form-control" type="text" name="salary" id="salary" />
-                        
-                    </form>
-                    <button type="button" class="btn btn-success col-sm-12">Работать</button>
+                <div class="card-body">
+                    <h4 class="card-title">Транзакции:</h4>
+                    <div id="transactions">
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,7 +53,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Университет</h4>
-                    <button type="button" class="btn btn-success col-sm-12">Повысить опыт на 10 за 10 GC</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="study">Повысить опыт на 10 за 10 GC</button>
                 </div>
             </div>
         </div>
@@ -79,5 +68,11 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"
         integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1"
         crossorigin="anonymous"></script>
+<script>
+    document.getElementById('study').addEventListener('click', function(){
+        backgroundRequest('GET', 'study');
+        backgroundRequest('GET', 'state', updateGame);
+    });
+</script>
 </body>
 </html>

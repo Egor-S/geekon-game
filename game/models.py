@@ -84,7 +84,7 @@ class Player(Base):
 
     def study(self):
         if self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO:
-            if self.active and self.money > STUDY_PRICE:
+            if self.active and self.money > STUDY_PRICE and sum([1 for t in self.transactions_in if t.state <= 1]) == 0:
                 self.active = False
                 self.money -= STUDY_PRICE
                 self.experience += STUDY_EXPERIENCE
@@ -172,6 +172,20 @@ class Transaction(Base):
             self.sender.company.money -= self.amount
             self.sender.company.fame += self.part
         self.state = 1
+
+    def for_receiver(self):
+        values = [self.sender.name, self.amount, self.part]
+        if self.type == TRANSACTION_INVEST:
+            return u'Инвестиция от {0}: {1} GC за {2}%'.format(*values)
+        elif self.type == TRANSACTION_HIRE_SEO or self.type == TRANSACTION_HIRE_PROGRAMMER:
+            return u'Приглашение на работу от {0}: {1} GC за {2} опыта'.format(*values)
+
+    def for_sender(self):
+        values = [self.receiver.name, self.amount, self.part]
+        if self.type == TRANSACTION_INVEST:
+            return u'Инвестиция в {0}: {1} GC за {2}%'.format(*values)
+        elif self.type == TRANSACTION_HIRE_SEO or self.type == TRANSACTION_HIRE_PROGRAMMER:
+            return u'Приглашение на работу {0}: {1} GC за {2} опыта'.format(*values)
 
 
 class Parameter(Base):  # TODO

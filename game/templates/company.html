@@ -13,6 +13,8 @@
             margin-top: 10px;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/interactive.js') }}"></script>
 </head>
 <body>
 <div class="container">
@@ -20,51 +22,71 @@
         <div class="col-sm-12 ">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title">Компания "Рога и копыта"</h4>
-                    <p class="card-text">Компания "рога и копыта" занимается производством всех видов рогов, а также
-                        обладает
-                        широчайшим выбором копыт на любой вкус и цвет. Главный принцип компании - инновации в действии!
-                    </p>
-                    <div class="alert alert-success" role="alert">
-                        Транзакция "Ивестиции от Сколково" проведена успешно!
-                    </div>
+                    <h4 class="card-title">ИП {{ name }}</h4>
+                    <p class="card-text">{{ description }}</p>
                     <table class="table table-striped">
                         <tbody>
                         <tr>
                             <th>Финансы</th>
-                            <td>300 GC</td>
-
+                            <td id="p-money">{{ money }} GC</td>
                         </tr>
                         <tr>
                             <th>Технический уровень</th>
-                            <td>50</td>
-
+                            <td id="p-tech">{{ tech }}</td>
                         </tr>
                         <tr>
                             <th>Известность</th>
-                            <td>50</td>
+                            <td id="p-fame">{{ fame }}</td>
                         </tr>
                         </tbody>
                     </table>
-                    <div class="alert alert-warning" role="alert">
-                        Код для проведения операций: <code>Yrt453</code>
-                    </div>
                     <h4 class="card-title">Проценты по инвестициям</h4>
                     <ul>
-                        <li>Сколково - <strong>30%</strong></li>
-                        <li>ФРИИ - <strong>10%</strong></li>
+                        {% for i in investments %}
+                        <li>{{ i.name }} - <strong>{{ i.part }}%</strong></li>
+                        {% endfor %}
                     </ul>
-                    <p class="card-text">Доступно акций: <strong>60%</strong>.</p>
-                    <p class="card-text">Налоги: <strong>10%</strong>.</p>
-                    <p class="card-text">Доход: <strong>1,8 * И - max(0, И - Т)</strong>.</p>
+                    <p class="card-text">Доступно акций: <strong id="p-part">{{ independent_part }}%</strong>.</p>
+                    <!--<p class="card-text">Налоги: <strong>10%</strong>.</p>-->
+                    <!--<p class="card-text">Доход: <strong>1,8 * И - max(0, И - Т)</strong>.</p>-->
                 </div>
             </div>
         </div>
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Транзакции:</h4>
+                    <div id="transactions">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-body btn btn-primary">
+                    <h4 class="card-title">Нанять разработчика или SEO</h4>
+                    <form>
+                        <label for="part">Опыт:</label>
+                        <input class="form-control" type="number" name="part" id="part" />
+                        <label for="amount">Зарплата:</label>
+                        <input class="form-control" type="number" name="amount" id="amount" />
+                        <label for="receiver">Работник:</label>
+                        <select class="form-control" name="receiver" id="receiver">
+                            {% for e in employers %}
+                            <option value="{{ e.id }}">{% if e.role == 1 %}Программист {% else %}SEO {% endif %}{{ e.name }} ({{ e.available }})</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <button type="button" class="btn btn-success col-sm-12" id="hire">Нанять</button>
+                </div>
+            </div>
+        </div>
+
         <div class="col-sm-12 ">
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Программист-фрилансер</h4>
-                    <button type="button" class="btn btn-success col-sm-12">Нанять за 30 GC</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="hire-prog">Нанять за 30 GC</button>
                 </div>
             </div>
         </div>
@@ -72,7 +94,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Пиарщик-фрилансер</h4>
-                    <button type="button" class="btn btn-success col-sm-12">Нанять за 30 GC</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="hire-seo">Нанять за 30 GC</button>
                 </div>
             </div>
         </div>
@@ -80,7 +102,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Инвестиции от Сколково</h4>
-                    <button type="button" class="btn btn-success col-sm-12">Запросить 300 GC за 30%</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="scol">Запросить 300 GC за 30%</button>
                 </div>
             </div>
         </div>
@@ -95,5 +117,27 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"
         integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1"
         crossorigin="anonymous"></script>
+<script>
+    var $form = {
+        amount: document.getElementById('amount'),
+        part: document.getElementById('part'),
+        receiver: document.getElementById('receiver')
+    };
+    document.getElementById('hire').addEventListener('click', function(){
+        backgroundRequest('GET', 'hire?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value);
+        backgroundRequest('GET', 'state', updateGame);
+        for(var k in $form){
+            $form[k].value = '';
+        }
+    });
+    document.getElementById('hire-prog').addEventListener('click', function(){
+        backgroundRequest('GET', 'outsource?type=1');
+        backgroundRequest('GET', 'state', updateGame);
+    });
+    document.getElementById('hire-seo').addEventListener('click', function(){
+        backgroundRequest('GET', 'outsource?type=2');
+        backgroundRequest('GET', 'state', updateGame);
+    });
+</script>
 </body>
 </html>

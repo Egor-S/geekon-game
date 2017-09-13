@@ -10,6 +10,7 @@ from game.parameters import *
 
 
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html', **{'session': session})
 
@@ -55,9 +56,9 @@ def login():
 
 
 @app.route('/logout')
+@login_required
 def logout():
-    if session.get('user_id', None):
-        del session['user_id']
+    del session['user_id']
     return redirect(url_for('login_page'))
 
 
@@ -79,20 +80,74 @@ def join_game():
 @app.route('/games/<int:gid>')
 @login_required
 def game_view(gid):
-    # TODO
-    if session['user_id'] > 1 and not Player.query.filter_by(game_id=gid, user_id=session['user_id']).first():
-        return redirect(url_for('index'))
+    player = Player.query.filter_by(game_id=gid, user_id=session['user_id']).first()
     g = Game.query.get(gid)
+    if session['user_id'] > 1 and (not player or not g):
+        return redirect(url_for('index'))
     if not g:
         return redirect(url_for('index'))
-    players = [{'login': p.name, 'money': p.money} for p in g.players]
-    return jsonify(players)
+    if g.state != 1:
+        return '{}, game is not active.'.format(player.name)
+    # Fill context
+    if player:
+        context = {'money': player.money, 'id': player.id, 'name': player.name, 'description': 'describe it here!', 'round': g.step}
+        if player.role == ROLE_PROGRAMMER:
+            context['role'] = u'Программист'
+            context['experience'] = player.experience
+            context['free_exp'] = player.experience - sum([t.part for t in player.transactions_in if t.state <= 1])
+            return render_template('employer.html', **context)
+        elif player.role == ROLE_SEO:
+            context['role'] = u'Специалист по продажам'
+            context['experience'] = player.experience
+            context['free_exp'] = player.experience - sum([t.part for t in player.transactions_in if t.state <= 1])
+            return render_template('employer.html', **context)
+        elif player.role == ROLE_STARTUP:
+            context['investments'] = {}
+            for t in player.transactions_in:
+                if t.sender_id not in context['investments']:
+                    context['investments'][t.sender_id] = {'name': t.sender.name, 'part': 0}
+                context['investments'][t.sender_id]['part'] += t.part
+            context['investments'] = sorted(context['investments'].values(), key=lambda x: x['part'])
+            context['money'] = player.company.money
+            context['tech'] = player.company.tech
+            context['fame'] = player.company.fame
+            context['independent_part'] = 100 - sum([t.part for t in player.transactions_in if t.state <= 2])
+            context['employers'] = []
+            for p in g.players:
+                if p.role == ROLE_PROGRAMMER or p.role == ROLE_SEO:
+                    context['employers'].append({
+                        'id': p.id,
+                        'available': p.experience - sum([t.part for t in p.transactions_in if t.state <= 1]),
+                        'name': p.name,
+                        'role': p.role
+                    })
+            context['employers'] = sorted(context['employers'], key=lambda x: (x['role'], x['available']))
+            return render_template('company.html', **context)
+        elif player.role == ROLE_INVESTOR:
+            context['investments'] = {}
+            for t in player.transactions_out:
+                if t.receiver_id not in context['investments']:
+                    context['investments'][t.receiver_id] = {'name': t.receiver.name, 'part': 0}
+                context['investments'][t.receiver_id]['part'] += t.part
+            context['investments'] = sorted(context['investments'].values(), key=lambda x: x['part'])
+            context['companies'] = []
+            for c in g.companies:
+                context['companies'].append({
+                    'id': c.owner.id,
+                    'name': c.owner.name,
+                    'available': 100 - sum([t.part for t in c.owner.transactions_in if t.state <= 2])
+                })
+            context['companies'] = sorted(context['companies'], key=lambda x: x['available'])
+            return render_template('investor.html', **context)
+
+    else:
+        context = {'round': g.step}
+    return 'Hi!'
 
 
 @app.route('/games/<int:gid>/state')
 @login_required
 def game_state(gid):
-    # TODO refactor
     player = Player.query.filter_by(game_id=gid, user_id=session['user_id']).first()
     if session['user_id'] > 1 and not player:
         return redirect(url_for('index'))
@@ -100,29 +155,29 @@ def game_state(gid):
     if not g:
         return 'No such game', 404
     r = {'step': g.step, 'rounds': g.rounds, 'state': g.state}
-    if g.state == 0:
-        r['players'] = [p.user.login for p in g.players]
+    if g.state != 1:
+        return jsonify(r)
+    if player:
+        r['money'] = player.money
+        r['transactions'] = []
+        if player.role == ROLE_PROGRAMMER or player.role == ROLE_SEO:
+            r['experience'] = player.experience
+            for t in player.transactions_in:
+                r['transactions'].append({'id': t.id, 'state': t.state, 'text': t.for_receiver()})
+        elif player.role == ROLE_INVESTOR:
+            for t in player.transactions_out:
+                r['transactions'].append({'id': t.id, 'state': t.state, 'text': t.for_sender(), 'out': True})
+        elif player.role == ROLE_STARTUP:
+            r['tech'] = player.company.tech
+            r['fame'] = player.company.fame
+            r['part'] = 100 - sum([t.part for t in player.transactions_in if t.state <= 2])
+            r['money'] = player.company.money
+            for t in player.transactions_in:
+                r['transactions'].append({'id': t.id, 'state': t.state, 'text': t.for_receiver()})
+            for t in player.transactions_out:
+                r['transactions'].append({'id': t.id, 'state': t.state, 'text': t.for_sender(), 'out': True})
     else:
-        r['companies'] = []
-        r['investors'] = []
-        r['seo'] = []
-        r['programmers'] = []
-        for p in g.players:
-            if p.role == ROLE_STARTUP:
-                r['companies'].append({'name': p.name, 'money': p.company.money, 'active': p.active, 'id': p.company.id})
-            elif p.role == ROLE_SEO:
-                r['seo'].append({'name': p.name, 'money': p.money, 'active': p.active,
-                                 'experience': p.experience, 'id': p.id})
-            elif p.role == ROLE_PROGRAMMER:
-                r['programmers'].append({'name': p.name, 'money': p.money, 'active': p.active,
-                                         'experience': p.experience, 'id': p.id})
-            elif p.role == ROLE_INVESTOR:
-                r['investors'].append({'name': p.name, 'money': p.money, 'active': p.active, 'id': p.id})
-        if player:
-            r['transactions'] = [{'amount': t.amount, 'part': t.part, 'id': t.id, 'state': t.state}
-                                 for t in player.transactions_in]
-        r['investments'] = []  # TODO
-
+        r['players'] = ['TODO', 'players']
     return jsonify(r)
 
 

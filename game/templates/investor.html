@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Start-It-Up game</title>
@@ -13,6 +13,8 @@
             margin-top: 10px;
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/interactive.js') }}"></script>
 </head>
 <body>
 <div class="container">
@@ -20,25 +22,31 @@
         <div class="col-sm-12 ">
             <div class="card">
                 <div class="card-body">
-                    <h4 class="card-title">Венчурный фонд "ФРИИ"</h4>
-                    <p class="card-text">С большой охотой инвестирует в любые проекты как либо связанные со свиньями. Это ведь офигенная тема!
-                    </p>
-                    <div class="alert alert-success" role="alert">
-                        Вы успешно инвестировали в "Рога и копыта" успешно!
-                    </div>
+                    <h4 class="card-title">Венчурный фонд {{ name }}</h4>
+                    <p class="card-text">{{ description }}</p>
                     <table class="table table-striped">
                         <tbody>
                         <tr>
                             <th>Финансы</th>
-                            <td>300 GC</td>
-
+                            <td id="p-money">{{ money }} GC</td>
                         </tr>
                         </tbody>
                     </table>
                     <h4 class="card-title">Проценты по инвестициям</h4>
                     <ul>
-                        <li>Рога и копыта - <strong>10%</strong></li>
+                        {% for i in investments %}
+                        <li>{{ i.name }} - <strong>{{ i.part }}%</strong></li>
+                        {% endfor %}
                     </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Транзакции:</h4>
+                    <div id="transactions">
+                    </div>
                 </div>
             </div>
         </div>
@@ -49,13 +57,16 @@
                     <form>
                         <label for="amount">Сумма:</label>
                         <input class="form-control" type="number" name="amount" id="amount" />
-                        <label for="percent">Процент акций:</label>
-                        <input class="form-control" type="number" name="percent" id="percent" />
-                        <label for="salary">Код подтверждения компании:</label>
-                        <input class="form-control" type="text" name="salary" id="salary" />
-                        
+                        <label for="part">Процент акций:</label>
+                        <input class="form-control" type="number" name="part" id="part" />
+                        <label for="receiver">Компания:</label>
+                        <select class="form-control" name="receiver" id="receiver">
+                            {% for c in companies %}
+                            <option value="{{ c.id }}">{{ c.name }} ({{ c.available }})</option>
+                            {% endfor %}
+                        </select>
                     </form>
-                    <button type="button" class="btn btn-success col-sm-12">Инвестировать</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="invest">Инвестировать</button>
                 </div>
             </div>
         </div>
@@ -70,5 +81,19 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"
         integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1"
         crossorigin="anonymous"></script>
+<script>
+    var $form = {
+        amount: document.getElementById('amount'),
+        part: document.getElementById('part'),
+        receiver: document.getElementById('receiver')
+    };
+    document.getElementById('invest').addEventListener('click', function(){
+        backgroundRequest('GET', 'invest?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value);
+        backgroundRequest('GET', 'state', updateGame);
+        for(var k in $form){
+            $form[k].value = '';
+        }
+    });
+</script>
 </body>
 </html>
