@@ -24,3 +24,8 @@ class TransactionForm(Form):
     part = IntegerField('part', validators=[InputRequired()])
     amount = IntegerField('amount', validators=[InputRequired()])
     receiver = IntegerField('receiver', validators=[InputRequired()])
+
+
+class LoginByCodeForm(Form):
+    code = StringField('code', validators=[InputRequired(), Length(min=6, max=80, message="Too short"),
+                                             Regexp(r"[0-9a-zA-Z_]+", message="Wrong characters")])

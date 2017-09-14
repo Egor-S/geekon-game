@@ -45,25 +45,17 @@
                                     <th>Название</th>
                                     <th>Технологический уровень</th>
                                     <th>Известность</th>
-                                    <th>Доход (за раунд)</th>
                                 </tr>
                                 </thead>
                                 <tbody>
+                                {% for i, c in companies %}
                                 <tr>
-                                    <th>1</th>
-                                    <td>Рога и копыта</td>
-                                    <td>40</td>
-                                    <td>30</td>
-                                    <td><span class="badge badge-success">+30%</span></td>
-
+                                    <th>{{ i + 1 }}</th>
+                                    <td>{{ c.name }}</td>
+                                    <td>{{ c.tech }}</td>
+                                    <td>{{ c.fame }}</td>
                                 </tr>
-                                <tr>
-                                    <th>2</th>
-                                    <td>Фабрика мемов</td>
-                                    <td>40</td>
-                                    <td>30</td>
-                                    <td><span class="badge badge-success">+30%</span></td>
-                                </tr>
+                                {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -83,19 +75,14 @@
                                 </tr>
                                 </thead>
                                 <tbody>
+                                {% for i, c in workers %}
                                 <tr>
-                                    <th>1</th>
-                                    <td>Семенов Игорь Петрович</td>
-                                    <td>Программист</td>
-                                    <td>30</td>
-
+                                    <th>{{ i + 1 }}</th>
+                                    <td>{{ c.name }}</td>
+                                    <td>{% if c.role == 1 %}Программист{% else %}Пиарщик{% endif %}</td>
+                                    <td>{{ c.experience }}</td>
                                 </tr>
-                                <tr>
-                                    <th>2</th>
-                                    <td>Семенов Игорь Петрович</td>
-                                    <td>Пиарщик</td>
-                                    <td>40</td>
-                                </tr>
+                                {% endfor %}
                                 </tbody>
                             </table>
                         </div>

@@ -27,6 +27,8 @@ class Game(Base):
         self.join_code = code
         if rounds:
             self.rounds = rounds
+        for k, v in GAME_PARAMETERS.items():
+            self.parameters.append(Parameter(k.lower(), float(v)))
 
     def new_round(self):
         for c in self.companies:
@@ -46,11 +48,25 @@ class Game(Base):
             elif t.state == 1:
                 t.state = 2
 
+    def get_var(self, key):
+        for p in self.parameters:
+            if p.key == key.lower():
+                return p.value
+        return 0.0
+
+    def set_var(self, key, value):
+        for p in self.parameters:
+            if p.key == key.lower():
+                p.value = float(value)
+                return True
+        return False
+
 
 class Player(Base):
     __tablename__ = 'players'
     id = Column(Integer, primary_key=True)
     name = Column(String(80), default="Bob")
+    description = Column(String(144), default="~")
     money = Column(Integer, default=0)
     experience = Column(Integer, default=10)
     active = Column(Boolean, default=False)
@@ -64,6 +80,7 @@ class Player(Base):
 
     def __init__(self):
         self.name = fake_generator.name()
+        self.description = fake_generator.address()[:144]
 
     def hire(self, company, amount, part):
         if (self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO) and self.active:
@@ -84,10 +101,11 @@ class Player(Base):
 
     def study(self):
         if self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO:
-            if self.active and self.money > STUDY_PRICE and sum([1 for t in self.transactions_in if t.state <= 1]) == 0:
+            if self.active and self.money > self.game.get_var('study_price') and \
+                    sum([1 for t in self.transactions_in if t.state <= 1]) == 0:
                 self.active = False
-                self.money -= STUDY_PRICE
-                self.experience += STUDY_EXPERIENCE
+                self.money -= self.game.get_var('study_price')
+                self.experience += self.game.get_var('study_exp')
                 return True
         return False
 
@@ -105,13 +123,13 @@ class Company(Base):
 
     def outsource(self, role):
         if self.owner.active:
-            if role == ROLE_PROGRAMMER and self.money >= OUTSOURCE_PRICE:
-                self.money -= OUTSOURCE_PRICE
-                self.tech += OUTSOURCE_EXPERIENCE
+            if role == ROLE_PROGRAMMER and self.money >= self.game.get_var('outsource_price'):
+                self.money -= int(self.game.get_var('outsource_price'))
+                self.tech += int(self.game.get_var('outsource_exp'))
                 return True
-            elif role == ROLE_SEO and self.money >= OUTSOURCE_PRICE:
-                self.money -= OUTSOURCE_PRICE
-                self.fame += OUTSOURCE_EXPERIENCE
+            elif role == ROLE_SEO and self.money >= self.game.get_var('outsource_price'):
+                self.money -= int(self.game.get_var('outsource_price'))
+                self.fame += int(self.game.get_var('outsource_exp'))
                 return True
         return False
 
@@ -127,7 +145,7 @@ class Company(Base):
         return False
 
     def new_round(self):
-        gain = int(FAME_MULTIPLIER * self.fame - PENALTY_MULTIPLIER * max(0, self.fame - self.tech))
+        gain = int(self.game.get_var('fame_x') * self.fame - self.game.get_var('penalty_x') * max(0, self.fame - self.tech))
         total_payments = 0
         for t in self.owner.transactions_in:
             if t.type == TRANSACTION_INVEST and (t.state == 1 or t.state == 2):
@@ -135,7 +153,7 @@ class Company(Base):
                 t.sender.money += payment
                 total_payments += payment
         gain -= total_payments
-        gain -= int(TAX_MULTIPLIER * gain)
+        gain -= int(self.game.get_var('tax_x') * gain)
         self.money += gain
 
 

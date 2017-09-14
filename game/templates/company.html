@@ -86,7 +86,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Программист-фрилансер</h4>
-                    <button type="button" class="btn btn-success col-sm-12" id="hire-prog">Нанять за 30 GC</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="hire-prog">{{ outsource_exp }} очков за {{ outsource_price }} GC</button>
                 </div>
             </div>
         </div>
@@ -94,7 +94,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Пиарщик-фрилансер</h4>
-                    <button type="button" class="btn btn-success col-sm-12" id="hire-seo">Нанять за 30 GC</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="hire-seo">{{ outsource_exp }} очков за {{ outsource_price }} GC</button>
                 </div>
             </div>
         </div>
@@ -102,7 +102,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Инвестиции от Сколково</h4>
-                    <button type="button" class="btn btn-success col-sm-12" id="scol">Запросить 300 GC за 30%</button>
+                    <button type="button" class="btn btn-success col-sm-12" id="skol">Запросить {{ skolkovo_money }} GC за {{ skolkovo_part }}%</button>
                 </div>
             </div>
         </div>
@@ -138,6 +138,10 @@
         backgroundRequest('GET', 'outsource?type=2');
         backgroundRequest('GET', 'state', updateGame);
     });
+    document.getElementById('skol').addEventListener('click', function(){
+        backgroundRequest('GET', 'skolkovo');
+        backgroundRequest('GET', 'state', updateGame);
+});
 </script>
 </body>
 </html>

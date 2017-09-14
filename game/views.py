@@ -3,7 +3,7 @@ import random
 from flask import render_template, session, redirect, url_for, request, jsonify
 from sqlalchemy import func
 from game import app, db_session as db
-from game.forms import LoginForm, RegistrationForm, GameForm, TransactionForm
+from game.forms import LoginByCodeForm, GameForm, TransactionForm
 from game.models import User, Player, Game, Company, Transaction
 from game.decorators import login_required
 from game.parameters import *
@@ -24,12 +24,12 @@ def login_page():
 
 @app.route('/auth/login', methods=["POST"])
 def login():
-    form = LoginForm(request.form)
+    form = LoginByCodeForm(request.form)
     if form.validate():
-        u = User.query.filter(func.lower(User.login) == form.login.data).first()
+        u = User.query.filter(func.lower(User.login) == form.code.data.lower()).first()
         if not u:
             return redirect(url_for('login_page'))
-        if not u.validate_password(form.password.data):
+        if not u.validate_password(form.code.data):
             return redirect(url_for('login_page'))
         session['user_id'] = u.id
         return redirect(url_for('index'))
@@ -86,20 +86,25 @@ def game_view(gid):
         return redirect(url_for('index'))
     if not g:
         return redirect(url_for('index'))
-    if g.state != 1:
+    if g.state != 1 and player:
         return '{}, game is not active.'.format(player.name)
     # Fill context
     if player:
-        context = {'money': player.money, 'id': player.id, 'name': player.name, 'description': 'describe it here!', 'round': g.step}
+        context = {'money': player.money, 'id': player.id, 'name': player.name,
+                   'description': player.description, 'round': g.step}
         if player.role == ROLE_PROGRAMMER:
             context['role'] = u'Программист'
             context['experience'] = player.experience
             context['free_exp'] = player.experience - sum([t.part for t in player.transactions_in if t.state <= 1])
+            context['study_exp'] = int(g.get_var('study_exp'))
+            context['study_price'] = int(g.get_var('study_price'))
             return render_template('employer.html', **context)
         elif player.role == ROLE_SEO:
             context['role'] = u'Специалист по продажам'
             context['experience'] = player.experience
             context['free_exp'] = player.experience - sum([t.part for t in player.transactions_in if t.state <= 1])
+            context['study_exp'] = int(g.get_var('study_exp'))
+            context['study_price'] = int(g.get_var('study_price'))
             return render_template('employer.html', **context)
         elif player.role == ROLE_STARTUP:
             context['investments'] = {}
@@ -112,6 +117,10 @@ def game_view(gid):
             context['tech'] = player.company.tech
             context['fame'] = player.company.fame
             context['independent_part'] = 100 - sum([t.part for t in player.transactions_in if t.state <= 2])
+            context['outsource_price'] = int(g.get_var('outsource_price'))
+            context['outsource_exp'] = int(g.get_var('outsource_exp'))
+            context['skolkovo_money'] = int(g.get_var('skolkovo_money'))
+            context['skolkovo_part'] = int(g.get_var('skolkovo_part'))
             context['employers'] = []
             for p in g.players:
                 if p.role == ROLE_PROGRAMMER or p.role == ROLE_SEO:
@@ -141,7 +150,23 @@ def game_view(gid):
             return render_template('investor.html', **context)
 
     else:
-        context = {'round': g.step}
+        context = {'round': g.step, 'companies': [], 'workers': []}
+        for c in g.companies:
+            context['companies'].append({
+                'name': c.owner.name,
+                'tech': c.tech,
+                'fame': c.fame
+            })
+        context['companies'] = list(enumerate(context['companies']))
+        for p in g.players:
+            if p.role == ROLE_PROGRAMMER or p.role == ROLE_SEO:
+                context['workers'].append({
+                    'name': p.name,
+                    'experience': p.experience,
+                    'role': p.role
+                })
+        context['workers'] = list(enumerate(context['workers']))
+        return render_template('state.html', **context)
     return 'Hi!'
 
 
@@ -220,13 +245,20 @@ def start_game(gid):
     for i in players[companies:companies + investors]:
         p = g.players[i]
         p.role = ROLE_INVESTOR
-        p.money = INVESTOR_DEFAULT_MONEY
+        p.money = g.get_var('investor_default_money')
     for i in players[companies + investors:companies + investors + seo]:
         p = g.players[i]
         p.role = ROLE_SEO
     for i in players[companies + investors + seo:]:
         p = g.players[i]
         p.role = ROLE_PROGRAMMER
+
+    skolkovo = Player()
+    skolkovo.role = ROLE_INVESTOR
+    skolkovo.game = g
+    skolkovo.name = u'Сколково'
+    skolkovo.money = 1000000  # may be it's too much
+    g.players.append(skolkovo)
 
     g.new_round()
     db.commit()
@@ -323,3 +355,28 @@ def reject_game(gid, tid):
         db.commit()
         return 'Rejected'
     return 'Error occurred', 400
+
+
+@app.route('/games/<int:gid>/skolkovo')
+@login_required
+def skolkovo_game(gid):
+    c = Company.query.join(Company.owner).filter(Company.game_id == gid, Player.user_id == session['user_id']).first()
+    s = Player.query.filter(Player.game_id == gid, Player.name == u'Сколково').first()
+    if c and c.invest(s, 300, 30):
+        db.commit()
+        return 'Requested'
+    return 'No such company', 400
+
+
+@app.route('/games/<int:gid>/vars/<key>/<value>')
+@login_required
+def set_var(gid, key, value):
+    if session['user_id'] != 1:
+        return 'Denied', 403
+    g = Game.query.get(gid)
+    if not g:
+        return 'No such game', 400
+    if g.set_var(key, float(value)):
+        db.commit()
+        return 'Var updated'
+    return 'Can\'t update', 400
