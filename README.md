@@ -21,7 +21,5 @@ $ python dbstates\join_game.py
 $ python run.py
 ```
 
-Залогиниться под `admin` (password: `admin+`).
-Отправить запрос на `/games/1/start`.
-Новый раунд `/games/2/round`
+Залогиниться под пользователя с `id == 1`
 

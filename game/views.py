@@ -150,7 +150,7 @@ def game_view(gid):
             return render_template('investor.html', **context)
 
     else:
-        context = {'round': g.step, 'companies': [], 'workers': []}
+        context = {'round': g.step, 'companies': [], 'workers': [], 'gid': gid, 'params': []}
         for c in g.companies:
             context['companies'].append({
                 'name': c.owner.name,
@@ -165,6 +165,11 @@ def game_view(gid):
                     'experience': p.experience,
                     'role': p.role
                 })
+        for p in g.parameters:
+            context['params'].append({
+                'key': p.key,
+                'value': p.value
+            })
         context['workers'] = list(enumerate(context['workers']))
         return render_template('state.html', **context)
     return 'Hi!'
@@ -368,15 +373,15 @@ def skolkovo_game(gid):
     return 'No such company', 400
 
 
-@app.route('/games/<int:gid>/vars/<key>/<value>')
+@app.route('/games/<int:gid>/vars/set')
 @login_required
-def set_var(gid, key, value):
+def set_var(gid):
     if session['user_id'] != 1:
         return 'Denied', 403
     g = Game.query.get(gid)
     if not g:
         return 'No such game', 400
-    if g.set_var(key, float(value)):
+    if g.set_var(request.args.get('key'), float(request.args.get('value'))):
         db.commit()
         return 'Var updated'
     return 'Can\'t update', 400

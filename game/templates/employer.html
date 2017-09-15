@@ -53,6 +53,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Университет</h4>
+                    <div class="alert alert-danger hidden" id="err-study">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="study">Повысить опыт на {{ study_exp }} за {{ study_price }} GC</button>
                 </div>
             </div>
@@ -70,7 +71,7 @@
         crossorigin="anonymous"></script>
 <script>
     document.getElementById('study').addEventListener('click', function(){
-        backgroundRequest('GET', 'study');
+        backgroundRequest('GET', 'study', undefined, getHandler(somethingWrong, ['err-study']));
         backgroundRequest('GET', 'state', updateGame);
     });
 </script>

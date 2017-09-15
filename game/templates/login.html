@@ -2,15 +2,29 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css"
+          integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
   <title>Вход</title>
 </head>
 <body>
-<form method="POST" action="{{ url_for('login') }}">
-  <label for="code-field">Код игрока</label>
-  <input name="code" id="code-field"><br>
-  <!--<label for="password-field">Пароль</label>-->
-  <!--<input name="password" id="password-field" type="password"><br>-->
-  <input type="submit" value="Вход">
-</form>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3"></div>
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Вход</h4>
+                    <form method="POST" action="{{ url_for('login') }}">
+                        <label for="code-field">Код игрока</label>
+                        <input class="form-control" name="code" id="code-field"><br>
+                        <!--<label for="password-field">Пароль</label>-->
+                        <!--<input name="password" id="password-field" type="password"><br>-->
+                        <input class="btn" type="submit" value="Вход">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

@@ -75,14 +75,15 @@ function updateTransactions(transactions){
     }
 }
 
-function backgroundRequest(method, endpoint, callback, body){
+function backgroundRequest(method, endpoint, callback, error){
     var xhr = new XMLHttpRequest();
     xhr.open(method, window.location.pathname + '/' + endpoint, true);
-    xhr.send(body);
+    xhr.send();
     xhr.onreadystatechange = function(){
         if(xhr.readyState !== 4) return;
         if(xhr.status !== 200){
             console.warn(xhr.status, method, endpoint, xhr.responseText);
+            if(error) error();
             return;
         }
         if(callback) callback(xhr.responseText);
@@ -97,11 +98,17 @@ function updateGame(raw_text){
     if(data.tech !== undefined) document.getElementById('p-tech').innerHTML = data.tech;
     if(data.fame !== undefined) document.getElementById('p-fame').innerHTML = data.fame;
     if(data.part !== undefined) document.getElementById('p-part').innerHTML = data.part + '%';
-    //TODO
 }
 
 function stopBackground(){
     clearInterval($game.updater);
+}
+
+function somethingWrong(id){
+    document.getElementById(id).classList.remove('hidden');
+    setTimeout(function () {
+        document.getElementById(id).classList.add('hidden');
+    }, 2500);
 }
 
 function getHandler(func, args){

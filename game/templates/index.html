@@ -1,11 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Главная</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css"
+          integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+    <title>Главная</title>
 </head>
 <body>
-<a href="{{ url_for('game_view', gid=1) }}">Играть!</a><br><br>
-<a href="{{ url_for('logout') }}">Выход</a>
+<div class="container">
+    <div class="row">
+        <div class="col-sm-3"></div>
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Добро пожаловать!</h4>
+                    <a class="btn btn-success" href="{{ url_for('game_view', gid=1) }}">Играть!</a><br><br>
+                    <a class="btn btn-danger" href="{{ url_for('logout') }}">Выход</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

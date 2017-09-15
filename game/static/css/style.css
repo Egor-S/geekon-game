@@ -9,3 +9,7 @@
 .alert > button {
     float: right;
 }
+
+.alert.hidden{
+    display: none;
+}

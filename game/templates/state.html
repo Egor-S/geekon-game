@@ -30,6 +30,10 @@
                     <a class="nav-link" id="pills-workers-tab" data-toggle="pill" href="#pills-workers" role="tab"
                        aria-controls="pills-workers" aria-expanded="true">Рынок труда</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="pills-admin-tab" data-toggle="pill" href="#pills-admin" role="tab"
+                       aria-controls="pills-admin" aria-expanded="true">Управление</a>
+                </li>
 
             </ul>
             <div class="tab-content" id="pills-tabContent">
@@ -88,7 +92,38 @@
                         </div>
                     </div>
                 </div>
-
+                <div class="tab-pane fade" id="pills-admin" role="tabpanel" aria-labelledby="pills-admin-tab">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Рынок труда</h4>
+                            <a class="btn btn-success" href="{{ url_for('start_game', gid=gid) }}">Запустить игру</a><br>
+                            <a class="btn btn-danger" href="{{ url_for('round_game', gid=gid) }}">Новый раунд</a><br>
+                            <table class="table table-striped">
+                                <thead>
+                                <tr>
+                                    <th>key</th>
+                                    <th>value</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for p in params %}
+                                <tr>
+                                    <td>{{ p.key }}</td>
+                                    <td>{{ p.value }}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            <form action="{{ url_for('set_var', gid=gid) }}" method="GET">
+                                <label for="key-field">Ключ</label>
+                                <input class="form-control" id="key-field" name="key" />
+                                <label for="value-field">Значение</label>
+                                <input class="form-control" id="value-field" name="value" />
+                                <input class="btn" type="submit" value="Записать">
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

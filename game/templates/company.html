@@ -77,6 +77,7 @@
                             {% endfor %}
                         </select>
                     </form>
+                    <div class="alert alert-danger hidden" id="err-hire">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="hire">Нанять</button>
                 </div>
             </div>
@@ -86,6 +87,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Программист-фрилансер</h4>
+                    <div class="alert alert-danger hidden" id="err-prog">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="hire-prog">{{ outsource_exp }} очков за {{ outsource_price }} GC</button>
                 </div>
             </div>
@@ -94,6 +96,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Пиарщик-фрилансер</h4>
+                    <div class="alert alert-danger hidden" id="err-seo">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="hire-seo">{{ outsource_exp }} очков за {{ outsource_price }} GC</button>
                 </div>
             </div>
@@ -102,6 +105,7 @@
             <div class="card">
                 <div class="card-body btn btn-primary">
                     <h4 class="card-title">Инвестиции от Сколково</h4>
+                    <div class="alert alert-danger hidden" id="err-skol">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="skol">Запросить {{ skolkovo_money }} GC за {{ skolkovo_part }}%</button>
                 </div>
             </div>
@@ -124,22 +128,22 @@
         receiver: document.getElementById('receiver')
     };
     document.getElementById('hire').addEventListener('click', function(){
-        backgroundRequest('GET', 'hire?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value);
+        backgroundRequest('GET', 'hire?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value, undefined, getHandler(somethingWrong ,['err-hire']));
         backgroundRequest('GET', 'state', updateGame);
         for(var k in $form){
             $form[k].value = '';
         }
     });
     document.getElementById('hire-prog').addEventListener('click', function(){
-        backgroundRequest('GET', 'outsource?type=1');
+        backgroundRequest('GET', 'outsource?type=1', undefined, getHandler(somethingWrong ,['err-prog']));
         backgroundRequest('GET', 'state', updateGame);
     });
     document.getElementById('hire-seo').addEventListener('click', function(){
-        backgroundRequest('GET', 'outsource?type=2');
+        backgroundRequest('GET', 'outsource?type=2', undefined, getHandler(somethingWrong ,['err-seo']));
         backgroundRequest('GET', 'state', updateGame);
     });
     document.getElementById('skol').addEventListener('click', function(){
-        backgroundRequest('GET', 'skolkovo');
+        backgroundRequest('GET', 'skolkovo', undefined,  getHandler(somethingWrong ,['err-skol']));
         backgroundRequest('GET', 'state', updateGame);
 });
 </script>

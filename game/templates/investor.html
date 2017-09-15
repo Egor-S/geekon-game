@@ -66,6 +66,7 @@
                             {% endfor %}
                         </select>
                     </form>
+                    <div class="alert alert-danger hidden" id="err-invest">Что-то пошло не так</div><br>
                     <button type="button" class="btn btn-success col-sm-12" id="invest">Инвестировать</button>
                 </div>
             </div>
@@ -88,7 +89,7 @@
         receiver: document.getElementById('receiver')
     };
     document.getElementById('invest').addEventListener('click', function(){
-        backgroundRequest('GET', 'invest?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value);
+        backgroundRequest('GET', 'invest?amount=' + $form.amount.value + '&part=' + $form.part.value + '&receiver=' + $form.receiver.value, undefined, getHandler(somethingWrong, ['err-invest']));
         backgroundRequest('GET', 'state', updateGame);
         for(var k in $form){
             $form[k].value = '';
