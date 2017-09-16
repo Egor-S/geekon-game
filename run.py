@@ -2,4 +2,4 @@
 from game import app
 from config import PORT, DEBUG
 
-app.run('localhost', PORT, DEBUG, threaded=True)
+app.run('0.0.0.0', PORT, DEBUG, threaded=True)

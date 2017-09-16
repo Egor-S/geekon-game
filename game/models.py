@@ -101,7 +101,7 @@ class Player(Base):
 
     def study(self):
         if self.role == ROLE_PROGRAMMER or self.role == ROLE_SEO:
-            if self.active and self.money > self.game.get_var('study_price') and \
+            if self.active and self.money >= self.game.get_var('study_price') and \
                     sum([1 for t in self.transactions_in if t.state <= 1]) == 0:
                 self.active = False
                 self.money -= self.game.get_var('study_price')
